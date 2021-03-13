@@ -8,17 +8,20 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -43,36 +46,44 @@ fun CountDownScreen() {
 
     val initialTime = Time(1, 45)
     var time by remember { mutableStateOf(initialTime) }
+    var started by remember { mutableStateOf(false) }
 
-//    LaunchedEffect(key1 = time.zero()) {
-//        while (true) {
-//            delay(1000)
-//            time = --time
-//        }
-//    }
-    CountDown(time = time)
+    LaunchedEffect(key1 = time.zero(), key2 = started) {
+        while (started && !time.zero()) {
+            delay(1000)
+            time = --time
+            Log.d(TAG, "CountDownScreen: time: $time")
+        }
+    }
+    Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        CountDown(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(0.8f), time = time
+        ) { time = it }
+        Switch(modifier = Modifier.rotate(90f),
+            checked = started, onCheckedChange = { started = it })
+    }
 }
 
 @Composable
-fun CountDown(time: Time) {
-    var changeTime by remember { mutableStateOf(time) }
+fun CountDown(modifier: Modifier = Modifier, time: Time, updateTime: (Time) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        NumberWheel(range = (0..5), selected = changeTime.minutes / 10) {
-            changeTime = changeTime.copy(minutes = it * 10 + changeTime.minutes % 10)
+        NumberWheel(range = (0..5), selected = time.minutes / 10) {
+            updateTime(time.copy(minutes = it * 10 + time.minutes % 10))
         }
-        NumberWheel(range = (0..9), selected = changeTime.minutes % 10) {
-            changeTime = changeTime.copy(minutes = changeTime.minutes / 10 * 10 + it)
+        NumberWheel(range = (0..9), selected = time.minutes % 10) {
+            updateTime(time.copy(minutes = time.minutes / 10 * 10 + it))
         }
-        NumberWheel(range = (0..5), selected = changeTime.seconds / 10) {
-            changeTime = changeTime.copy(seconds = it * 10 + changeTime.seconds % 10)
+        NumberWheel(range = (0..5), selected = time.seconds / 10) {
+            updateTime(time.copy(seconds = it * 10 + time.seconds % 10))
         }
-        NumberWheel(range = (0..9), selected = changeTime.seconds % 10) {
-            changeTime =
-                changeTime.copy(seconds = changeTime.seconds / 10 * 10 + it) // Replace the unit
+        NumberWheel(range = (0..9), selected = time.seconds % 10) {
+            updateTime(time.copy(seconds = time.seconds / 10 * 10 + it)) // Replace the unit
         }
     }
 }
@@ -84,7 +95,7 @@ private fun NumberWheel(range: IntRange, selected: Int, onSelectionUpdate: (Int)
     val boxSize = with(LocalDensity.current) { boxSizeDp.toPx() }
     val mid = (range.last - range.first) / 2f
     val offset = boxSize * (mid - selected)
-    Log.d(TAG, "NumberWheel: offset: $offset")
+    //Log.d(TAG, "NumberWheel: offset: $offset")
 
     var offsetY by remember { mutableStateOf(0f) }
     val dragState = rememberDraggableState(onDelta = { delta ->
