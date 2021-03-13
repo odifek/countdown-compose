@@ -2,7 +2,8 @@ package com.example.countdownchallenge
 
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private const val TAG = "CountDown"
 
 data class Time(val minutes: Int, val seconds: Int) {
     operator fun dec(): Time {
@@ -66,7 +71,8 @@ fun CountDown(time: Time) {
             changeTime = changeTime.copy(seconds = it * 10 + changeTime.seconds % 10)
         }
         NumberWheel(range = (0..9), selected = changeTime.seconds % 10) {
-            changeTime = changeTime.copy(seconds = changeTime.seconds / 10 * 10 + it) // Replace the unit
+            changeTime =
+                changeTime.copy(seconds = changeTime.seconds / 10 * 10 + it) // Replace the unit
         }
     }
 }
@@ -78,50 +84,25 @@ private fun NumberWheel(range: IntRange, selected: Int, onSelectionUpdate: (Int)
     val boxSize = with(LocalDensity.current) { boxSizeDp.toPx() }
     val mid = (range.last - range.first) / 2f
     val offset = boxSize * (mid - selected)
-    var totalOffset by remember { mutableStateOf(offset) }
+    Log.d(TAG, "NumberWheel: offset: $offset")
 
-    var isMax = false
-    var isMin = false
     var offsetY by remember { mutableStateOf(0f) }
     val dragState = rememberDraggableState(onDelta = { delta ->
-        // We don't want to record the drag if we've reached the end of the bar
-        var updateSelection = false
         val newOffset = offsetY + delta
-        if (isMax) {
-            if (newOffset <= offsetY) {
-                updateSelection = true
-                offsetY = newOffset
-            }
-        } else if (isMin) {
-            if (newOffset >= offsetY) {
-                updateSelection = true
-                offsetY = newOffset
-            }
-        } else {
-            updateSelection = true
-            offsetY = newOffset
-        }
-
-        val effectiveDragOffset =
-            boxSize * (offsetY / boxSize).toInt() // Round off to a number a multiple of boxSize
-
-        val maxOffset = abs(boxSize * mid)
-        totalOffset = (effectiveDragOffset + offset).coerceIn(-maxOffset, maxOffset)
-        isMin = totalOffset <= -maxOffset // Have we reached the minimum point
-        isMax = totalOffset >= maxOffset
-
-
-
-        if (updateSelection) {
-            val selection =
-                (mid - totalOffset / boxSize).toInt() // Calculate the current selection based on the total offset
+        if (abs(newOffset) >= boxSize) {
+            offsetY = 0f // Reset the offset before recomposing.
+            val maxOffset = abs(boxSize * mid)
+            val totalOffset = (newOffset + offset).coerceIn(-maxOffset, maxOffset)
+            val selection = (mid - totalOffset / boxSize).toInt()
             onSelectionUpdate(selection)
+        } else {
+            offsetY = newOffset
         }
     })
 
     Column(
         modifier = Modifier
-            .offset { IntOffset(x = 0, y = totalOffset.roundToInt()) }
+            .offset { IntOffset(x = 0, y = offset.roundToInt()) }
             .clip(RoundedCornerShape(25))
             .draggable(dragState, orientation = Orientation.Vertical)
     ) {
