@@ -1,6 +1,7 @@
 package com.example.countdownchallenge
 
-import android.util.Log
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -18,6 +19,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +54,6 @@ fun CountDownScreen() {
         while (started && !time.zero()) {
             delay(1000)
             time = --time
-            Log.d(TAG, "CountDownScreen: time: $time")
         }
     }
     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -94,7 +95,15 @@ private fun NumberWheel(range: IntRange, selected: Int, onSelectionUpdate: (Int)
     val boxSizeDp = 40.dp
     val boxSize = with(LocalDensity.current) { boxSizeDp.toPx() }
     val mid = (range.last - range.first) / 2f
-    val offset = boxSize * (mid - selected)
+    val reset = selected == range.last
+    val offset by animateFloatAsState(
+        targetValue = boxSize * (mid - selected),
+        animationSpec = if (reset) {
+            spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+        } else {
+            tween(durationMillis = 300, easing = LinearOutSlowInEasing)
+        }
+    )
     //Log.d(TAG, "NumberWheel: offset: $offset")
 
     var offsetY by remember { mutableStateOf(0f) }
@@ -118,17 +127,23 @@ private fun NumberWheel(range: IntRange, selected: Int, onSelectionUpdate: (Int)
             .draggable(dragState, orientation = Orientation.Vertical)
     ) {
         range.forEach { n ->
-            val background =
-                if (n == selected) MaterialTheme.colors.secondary else MaterialTheme.colors.primary
-            Box(
-                modifier = Modifier
-                    .size(boxSizeDp)
-                    .background(background),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = n.toString(), fontSize = 20.sp, color = MaterialTheme.colors.onPrimary)
-            }
+            Digit(n, active = selected == n, boxSizeDp)
         }
+    }
+}
+
+@Composable
+private fun Digit(value: Int, active: Boolean, boxSizeDp: Dp) {
+    val background by animateColorAsState(
+        if (active) MaterialTheme.colors.secondary else MaterialTheme.colors.primary
+    )
+    Box(
+        modifier = Modifier
+            .size(boxSizeDp)
+            .background(background),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = value.toString(), fontSize = 20.sp, color = MaterialTheme.colors.onPrimary)
     }
 }
 
