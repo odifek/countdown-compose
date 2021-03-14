@@ -1,5 +1,6 @@
 package com.example.countdownchallenge
 
+import android.content.res.Configuration.UI_MODE_NIGHT_NO
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -8,9 +9,10 @@ import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,16 +56,38 @@ fun CountDownScreen() {
         while (started && !time.zero()) {
             delay(1000)
             time = --time
+            started = !time.zero()
         }
     }
+
+    val playPause = if (started) Icons.Default.PauseCircle else Icons.Default.PlayCircle
     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         CountDown(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth(0.8f), time = time
         ) { time = it }
-        Switch(modifier = Modifier.rotate(90f),
-            checked = started, onCheckedChange = { started = it })
+        Column {
+            IconButton(onClick = { if (!started && !time.zero()) started = true }) {
+                Icon(
+                    imageVector = Icons.Default.PlayCircle,
+                    contentDescription = "start count down",
+                    tint = MaterialTheme.colors.primary,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(56.dp))
+
+            IconButton(onClick = { if (started) started = false }) {
+                Icon(
+                    imageVector = Icons.Default.PauseCircle,
+                    contentDescription = "pause count down",
+                    tint = MaterialTheme.colors.primary,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
     }
 }
 
